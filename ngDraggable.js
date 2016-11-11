@@ -325,11 +325,11 @@ angular.module("ngDraggable", [])
                 var onDragMove = function(evt, obj) {
                     if(! _dropEnabled)return;
                     isTouching(obj.x,obj.y,obj.element,evt,obj);
-
+					if(! scope.isTouching) return;
                     if (attrs.ngDragMove) {
-                        $timeout(function(){
-                            onDragMoveCallback(scope, {$data: obj.data, $event: obj});
-                        });
+						$timeout(function(){
+							onDragMoveCallback(scope, {$data: obj.data, $event: obj})
+						});
                     }
                 };
 
@@ -409,9 +409,7 @@ angular.module("ngDraggable", [])
                     var bounds = element[0].getBoundingClientRect();// ngDraggable.getPrivOffset(element);
                     x -= $document[0].body.scrollLeft + $document[0].documentElement.scrollLeft;
                     y -= $document[0].body.scrollTop + $document[0].documentElement.scrollTop;
-					var isAttached = x >= bounds.left && x <= bounds.right && y <= bounds.bottom && y >= bounds.top;
-					var isParent = false //TODO
-                    return isAttached || isParent;
+					return isAttached = x >= bounds.left && x <= bounds.right && y <= bounds.bottom && y >= bounds.top;
                 };
 
                 initialize();
