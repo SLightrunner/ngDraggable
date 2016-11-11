@@ -269,7 +269,7 @@ angular.module("ngDraggable", [])
         };
     }])
 
-    .directive('ngDrop', ['$parse', '$timeout', '$window', '$document', 'ngDraggable', function ($parse, $timeout, $window, $document, ngDraggable) {
+    .directive('ngDrop', ['$parse', '$timeout', '$window', '$document', 'ngDraggable', '$rootScope', function ($parse, $timeout, $window, $document, ngDraggable, $rootScope) {
         return {
             restrict: 'A',
             link: function (scope, element, attrs) {
@@ -287,6 +287,8 @@ angular.module("ngDraggable", [])
                 var onDragStartCallback = $parse(attrs.ngDragStart);
                 var onDragStopCallback = $parse(attrs.ngDragStop);
                 var onDragMoveCallback = $parse(attrs.ngDragMove);
+				var onDragEnterCallback = $parse(attrs.ngDragEnter);
+                var onDragLeaveCallback = $parse(attrs.ngDragLeave);
 
                 var initialize = function () {
                     toggleListeners(true);
@@ -312,7 +314,7 @@ angular.module("ngDraggable", [])
                 };
                 var onDragStart = function(evt, obj) {
                     if(! _dropEnabled)return;
-                    isTouching(obj.x,obj.y,obj.element);
+                    isTouching(obj.x,obj.y,obj.element,evt,obj);
 
                     if (attrs.ngDragStart) {
                         $timeout(function(){
@@ -322,12 +324,12 @@ angular.module("ngDraggable", [])
                 };
                 var onDragMove = function(evt, obj) {
                     if(! _dropEnabled)return;
-                    isTouching(obj.x,obj.y,obj.element);
-
+                    isTouching(obj.x,obj.y,obj.element,evt,obj);
+					if(! scope.isTouching) return;
                     if (attrs.ngDragMove) {
-                        $timeout(function(){
-                            onDragMoveCallback(scope, {$data: obj.data, $event: obj});
-                        });
+						$timeout(function(){
+							onDragMoveCallback(scope, {$data: obj.data, $event: obj})
+						});
                     }
                 };
 
@@ -339,7 +341,7 @@ angular.module("ngDraggable", [])
                         updateDragStyles(false, obj.element);
                         return;
                     }
-                    if (isTouching(obj.x, obj.y, obj.element)) {
+                    if (isTouching(obj.x, obj.y, obj.element, evt, obj)) {
                         // call the ngDraggable ngDragSuccess element callback
                         if(obj.callback){
                             obj.callback(obj);
@@ -361,9 +363,30 @@ angular.module("ngDraggable", [])
                     updateDragStyles(false, obj.element);
                 };
 
-                var isTouching = function(mouseX, mouseY, dragElement) {
+                var isTouching = function(mouseX, mouseY, dragElement, evt, obj) {
                     var touching= hitTest(mouseX, mouseY);
-                    scope.isTouching = touching;
+                    
+                    if (touching && !scope.isTouching) {
+                        $rootScope.$broadcast('draggable:dragEnter', { x: mouseX, y: mouseY, event: evt, element: element, dragElement: dragElement, data: obj.data, uid: _myid });
+
+                        if (attrs.ngDragEnter) {
+                            setTimeout(function() { // Make sure to always run dragEnter after dragLeave when moving from one drop element to another
+                                $timeout(function() {
+                                    onDragEnterCallback(scope, {$data: obj.data, $event: obj, $target: scope.$eval(scope.value)});
+                                });
+                            }, 0);
+                        }
+                    } else if (!touching && scope.isTouching) {
+                        $rootScope.$broadcast('draggable:dragLeave', { x: mouseX, y: mouseY, event: evt, element: element, dragElement: dragElement, data: obj.data, uid: _myid });
+
+                        if (attrs.ngDragLeave) {
+                            $timeout(function() {
+                                onDragLeaveCallback(scope, {$data: obj.data, $event: obj, $target: scope.$eval(scope.value)});
+                            });
+                        }
+                    }
+					
+					scope.isTouching = touching;
                     if(touching){
                         _lastDropTouch = element;
                     }
@@ -386,10 +409,7 @@ angular.module("ngDraggable", [])
                     var bounds = element[0].getBoundingClientRect();// ngDraggable.getPrivOffset(element);
                     x -= $document[0].body.scrollLeft + $document[0].documentElement.scrollLeft;
                     y -= $document[0].body.scrollTop + $document[0].documentElement.scrollTop;
-                    return  x >= bounds.left
-                        && x <= bounds.right
-                        && y <= bounds.bottom
-                        && y >= bounds.top;
+					return isAttached = x >= bounds.left && x <= bounds.right && y <= bounds.bottom && y >= bounds.top;
                 };
 
                 initialize();
