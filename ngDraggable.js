@@ -459,8 +459,8 @@ angular.module("ngDraggable", [])
                         scope.$apply(function () {
                             scope.clonedData = obj.data;
                         });
-                        element.css('width', obj.element[0].offsetWidth);
-                        element.css('height', obj.element[0].offsetHeight);
+                        element.css('width', obj.element[0].offsetWidth || (obj.element.width() + parseInt(obj.element.css('border-left'),10) + parseInt(obj.element.css('border-right'),10)));
+                        element.css('height', obj.element[0].offsetHeight || (obj.element.height() + parseInt(obj.element.css('border-top'),10) + parseInt(obj.element.css('border-bottom'),10)));
 
                         moveElement(obj.tx, obj.ty);
                     }
